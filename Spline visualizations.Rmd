@@ -84,6 +84,8 @@ anim_save("D:/Advanced Data Analysis/b0_animation.gif")
 
 Degree 1 splines with 3 knots:
 ```{r}
+betas_1 <- glm(response ~ b_neg11 + b_01 + b_11 + b_21 + b_31 -1, data = simulated_data)$coefficients
+
 simulated_data <- simulated_data |> 
   mutate(
     b_00 = ifelse(segment == 0, 1, 0),
@@ -96,9 +98,9 @@ simulated_data <- simulated_data |>
     b_21 = (covariate - 0.5)/(0.25) * b_20 + (1 - covariate)/(0.25) * b_30,
     b_31 = (covariate - 0.75)/(0.25) * b_30,
     line_1 = b_neg11 * betas_1[1] + b_01 * betas_1[2] + b_11 * betas_1[3] + b_21 * betas_1[4] + b_31 * betas_1[5]
-  )
+    )
 
-betas_1 <- glm(response ~ b_neg11 + b_01 + b_11 + b_21 + b_31 -1, data = simulated_data)$coefficients
+
 ```
 
 Plot:
@@ -120,19 +122,19 @@ b_1s <- ggplot(data = simulated_data, aes(x = covariate, y = response)) +
   geom_line(aes(x = covariate, y = b_31 * max(response)), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE) +
   
   #weighted b1 splines
-  geom_line(aes(x = covariate, y = b_neg11 * 5.2132), color = "#338477", linewidth = 1.5, linetype = "dotted", inherit.aes = FALSE) +
-  geom_line(aes(x = covariate, y = b_01 * 12.6628), color = "#8dd3c7", linewidth = 1.5, inherit.aes = FALSE) +
-  geom_line(aes(x = covariate, y = b_11 * 7.0089), color = "#fc8d62", linewidth = 1.5, inherit.aes = FALSE) +
-  geom_line(aes(x = covariate, y = b_21 * 6.8372), color = "#8da0cb", linewidth = 1.5, inherit.aes = FALSE) +
-  geom_line(aes(x = covariate, y = b_31 * 3.6916), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_neg11 * betas_1[1]), color = "#338477", linewidth = 1.5, linetype = "dotted", inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_01 * betas_1[2]), color = "#8dd3c7", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_11 * betas_1[3]), color = "#fc8d62", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_21 * betas_1[4]), color = "#8da0cb", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_31 * betas_1[5]), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE) +
 
   #add it all together
-  geom_line(aes(x = covariate, y = line_1, color = as.factor(segment)), linewidth = 1.5, inherit.aes = FALSE) +
-  scale_color_manual(values = c("0" = "#8dd3c7",
-                                "1" = "#fc8d62",
-                                "2" = "#8da0cb",
-                                "3" = "#e78ac3")) +
-  guides(color = "none")
+  geom_segment(aes(x = 0, xend = 0.25, y = betas_1[1], yend = betas_1[2]), color = "#8dd3c7", linewidth = 1.5, inherit.aes = FALSE) + 
+  geom_segment(aes(x = 0.25, xend = 0.5, y = betas_1[2], yend = betas_1[3]), color = "#fc8d62", linewidth = 1.5, inherit.aes = FALSE) + 
+  geom_segment(aes(x = 0.5, xend = 0.75, y = betas_1[3], yend = betas_1[4]), color = "#8da0cb", linewidth = 1.5, inherit.aes = FALSE) + 
+  geom_segment(aes(x = 0.75, xend = 1, y = betas_1[4], yend = betas_1[5]), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE) 
+  
+
 
   
 b_1s
@@ -142,14 +144,230 @@ b_1s
 animb1s <- b_1s +
 transition_layers(layer_length = 1, transition_length = 1,
                   from_blank = FALSE, 
-                  keep_layers = c(Inf, Inf, 4, 4, 4, 4, 4, Inf, 4, 4, 4)) 
+                  keep_layers = c(Inf, Inf, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4)) 
 
 animate(animb1s, nframes = 100, fps = 10, end_pause = 20,
         renderer = gifski_renderer())
 anim_save("D:/Advanced Data Analysis/b1_animation.gif")
 ```
 
+Degree 2 splines with 3 knots:
+```{r}
+simulated_data <- simulated_data |> 
+  mutate(
+    b_02 = (covariate / 0.5) * b_01 + ((0.75 - covariate)/(0.5)) * b_11,
+    b_12 = ((covariate - 0.25)/0.5) * b_11 + ((1 - covariate)/(0.5)) * b_21,
+    b_22 = ((covariate - 0.5)/0.5) * b_21 + ((1.25 - covariate)/0.5) * b_31,
+    b_32 = ((covariate - 0.75)/0.5) * b_31,
+    b_neg12 = ((covariate + 0.25)/0.5) * b_neg11 + ((0.5 - covariate)/0.5) * b_01
+    )
+
+betas_2 <- glm(response ~ b_neg12 + b_02 + b_12 + b_22 + b_32 -1, data = simulated_data)$coefficients
+
+simulated_data <- simulated_data |> 
+  mutate(
+    line_2 = b_neg12 * betas_2[1] + b_02 * betas_2[2] + b_12 * betas_2[3] + b_22 * betas_2[4] + b_32 * betas_2[5]
+  )
+```
+
+```{r}
+b_2s <- ggplot(data = simulated_data, aes(x = covariate, y = response)) +
+  scale_y_continuous(
+    name = "response",
+    sec.axis = sec_axis(~./max(simulated_data$response), name = "spline weight"),
+    limits = c(0, max(simulated_data$response))
+  ) +
+  geom_point() +
+  geom_vline(xintercept = c(0, 0.25, 0.5, 0.75, 1), linetype = "dashed", color = "azure3") +
+  
+  #unweighted b1 splines
+  geom_line(aes(x = covariate, y = b_neg12 * max(response)), color = "#338477", linewidth = 1.5, linetype = "dotted", inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_02 * max(response)), color = "#8dd3c7", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_12 * max(response)), color = "#fc8d62", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_22 * max(response)), color = "#8da0cb", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_32 * max(response)), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE) +
+  
+  #weighted b1 splines
+  geom_line(aes(x = covariate, y = b_neg12 * betas_2[1]), color = "#338477", linewidth = 1.5, linetype = "dotted", inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_02 * betas_2[2]), color = "#8dd3c7", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_12 * betas_2[3]), color = "#fc8d62", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_22 * betas_2[4]), color = "#8da0cb", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_32 * betas_2[5]), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE) +
+
+  #add it all together
+  geom_line(aes(x = covariate, y = line_2, color = as.factor(segment)), linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_2, color = as.factor(segment)), linewidth = 1.5, inherit.aes = FALSE) +
+  scale_color_manual(values = c("0" = "#8dd3c7",
+                                "1" = "#fc8d62",
+                                "2" = "#8da0cb",
+                                "3" = "#e78ac3")) +
+  guides(color = "none")
+  
+  
+  
 
 
+  
+b_2s
+```
 
+```{r}
+animb2s <- b_2s +
+transition_layers(layer_length = 1, transition_length = 1,
+                  from_blank = FALSE, 
+                  keep_layers = c(Inf, Inf, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1, 1)) 
+
+animate(animb2s, nframes = 100, fps = 10, end_pause = 20,
+        renderer = gifski_renderer())
+anim_save("D:/Advanced Data Analysis/b2_animation.gif")
+```
+
+Degree 3 splines with 3 knots:
+```{r}
+simulated_data <- simulated_data |> 
+  mutate(
+    b_03 = (covariate / 0.75) * b_02 + ((1 - covariate)/(0.75)) * b_12,
+    b_13 = ((covariate - 0.25)/0.75) * b_12 + ((1.25 - covariate)/(0.75)) * b_22,
+    b_23 = ((covariate - 0.5)/0.75) * b_22 + ((1.5 - covariate)/0.75) * b_32,
+    b_33 = ((covariate - 0.75)/0.75) * b_32,
+    b_neg13 = ((covariate + 0.25)/0.75) * b_neg12 + ((0.75 - covariate)/0.75) * b_02
+    )
+
+betas_3 <- glm(response ~ b_neg13 + b_03 + b_13 + b_23 + b_33 -1, data = simulated_data)$coefficients
+
+simulated_data <- simulated_data |> 
+  mutate(
+    line_3 = b_neg13 * betas_3[1] + b_03 * betas_3[2] + b_13 * betas_3[3] + b_23 * betas_3[4] + b_33 * betas_3[5]
+  )
+```
+
+```{r}
+simulated_data <- simulated_data |> 
+  mutate(
+    b_02 = (covariate / 0.5) * b_01 + ((0.75 - covariate)/(0.5)) * b_11,
+    b_12 = ((covariate - 0.25)/0.5) * b_11 + ((1 - covariate)/(0.5)) * b_21,
+    b_22 = ((covariate - 0.5)/0.5) * b_21 + ((1.25 - covariate)/0.5) * b_31,
+    b_32 = ((covariate - 0.75)/0.5) * b_31,
+    b_neg12 = ((covariate + 0.25)/0.5) * b_neg11 + ((0.5 - covariate)/0.5) * b_01
+    )
+
+betas_2 <- glm(response ~ b_neg12 + b_02 + b_12 + b_22 + b_32 -1, data = simulated_data)$coefficients
+
+simulated_data <- simulated_data |> 
+  mutate(
+    line_2 = b_neg12 * betas_2[1] + b_02 * betas_2[2] + b_12 * betas_2[3] + b_22 * betas_2[4] + b_32 * betas_2[5]
+  )
+```
+
+```{r}
+b_3s <- ggplot(data = simulated_data, aes(x = covariate, y = response)) +
+  scale_y_continuous(
+    name = "response",
+    sec.axis = sec_axis(~./max(simulated_data$response), name = "spline weight"),
+    limits = c(0, max(simulated_data$response))
+  ) +
+  geom_point() +
+  geom_vline(xintercept = c(0, 0.25, 0.5, 0.75, 1), linetype = "dashed", color = "azure3") +
+  
+  #unweighted b1 splines
+  geom_line(aes(x = covariate, y = b_neg13 * max(response)), color = "#338477", linewidth = 1.5, linetype = "dotted", inherit.aes = FALSE, na.rm = TRUE) +
+  geom_line(aes(x = covariate, y = b_03 * max(response)), color = "#8dd3c7", linewidth = 1.5, inherit.aes = FALSE, na.rm = TRUE) +
+  geom_line(aes(x = covariate, y = b_13 * max(response)), color = "#fc8d62", linewidth = 1.5, inherit.aes = FALSE, na.rm = TRUE) +
+  geom_line(aes(x = covariate, y = b_23 * max(response)), color = "#8da0cb", linewidth = 1.5, inherit.aes = FALSE, na.rm = TRUE) +
+  geom_line(aes(x = covariate, y = b_33 * max(response)), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE, na.rm = TRUE) +
+  
+  #weighted b1 splines
+  geom_line(aes(x = covariate, y = b_neg13 * betas_3[1]), color = "#338477", linewidth = 1.5, linetype = "dotted", inherit.aes = FALSE, na.rm = TRUE) +
+  geom_line(aes(x = covariate, y = b_03 * betas_3[2]), color = "#8dd3c7", linewidth = 1.5, inherit.aes = FALSE, na.rm = TRUE) +
+  geom_line(aes(x = covariate, y = b_13 * betas_3[3]), color = "#fc8d62", linewidth = 1.5, inherit.aes = FALSE, na.rm = TRUE) +
+  geom_line(aes(x = covariate, y = b_23 * betas_3[4]), color = "#8da0cb", linewidth = 1.5, inherit.aes = FALSE, na.rm = TRUE) +
+  geom_line(aes(x = covariate, y = b_33 * betas_3[5]), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE, na.rm = TRUE) +
+
+  #add it all together
+  geom_line(aes(x = covariate, y = line_3, color = as.factor(segment)), linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_3, color = as.factor(segment)), linewidth = 1.5, inherit.aes = FALSE) +
+  scale_color_manual(values = c("0" = "#8dd3c7",
+                                "1" = "#fc8d62",
+                                "2" = "#8da0cb",
+                                "3" = "#e78ac3")) +
+  guides(color = "none")
+  
+  
+  
+
+
+  
+b_3s
+```
+
+```{r}
+animb3s <- b_3s +
+transition_layers(layer_length = 1, transition_length = 1,
+                  from_blank = FALSE, 
+                  keep_layers = c(Inf, Inf, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1, 1)) 
+
+animate(animb3s, nframes = 100, fps = 10, end_pause = 20,
+        renderer = gifski_renderer())
+anim_save("D:/Advanced Data Analysis/b3_animation.gif")
+```
+
+Compare polynomials and splines:
+```{r}
+simulated_data_poly <- simulated_data |> 
+  mutate(
+    x_2 = covariate^2,
+    x_3 = covariate^3,
+    x_4 = covariate^4
+  )
+
+betas_poly2 <- glm(response ~ covariate + x_2, data = simulated_data_poly)$coefficients
+betas_poly3 <- glm(response ~ covariate + x_2 + x_3, data = simulated_data_poly)$coefficients
+betas_poly4 <- glm(response ~ covariate + x_2 + x_3 + x_4, data = simulated_data_poly)$coefficients
+
+simulated_data_poly <- simulated_data_poly |> 
+  mutate(
+    line_2poly = betas_poly2[1] + betas_poly2[2] * covariate + betas_poly2[3] * x_2,
+    line_3poly = betas_poly3[1] + betas_poly3[2] * covariate + betas_poly3[3] * x_2 
+    + betas_poly3[4] * x_3,
+    line_4poly = betas_poly4[1] + betas_poly4[2] * covariate + betas_poly4[3] * x_2 
+    + betas_poly4[4] * x_3 + betas_poly4[5] * x_4
+  )
+
+comparison <- ggplot(data = simulated_data, aes(x = covariate, y = response)) +
+  scale_y_continuous(
+    name = "response",
+    limits = c(0, max(simulated_data$response))
+  ) +
+  geom_point() +
+  geom_line(aes(x = covariate, y = line_2, color = "B2 Splines"), inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_3, color = "B3 Splines"), inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_2poly, color = "2nd Polynomial"), 
+            data = simulated_data_poly, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_3poly, color = "3rd Polynomial"), 
+            data = simulated_data_poly, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_4poly, color = "4th Polynomial"), 
+            data = simulated_data_poly, inherit.aes = FALSE) 
+
+comparison
+
+zoomed_out <- ggplot(data = simulated_data, aes(x = covariate, y = response)) +
+  scale_y_continuous(
+    name = "response",
+    limits = c(-10, max(simulated_data$response) + 10)
+  ) +
+  scale_x_continuous(
+    limits = c(-10, 10)
+  ) +
+  geom_point() +
+  geom_line(aes(x = covariate, y = line_2, color = "B2 Splines"), inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_3, color = "B3 Splines"), inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_2poly, color = "2nd Polynomial"), 
+            data = simulated_data_poly, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_3poly, color = "3rd Polynomial"), 
+            data = simulated_data_poly, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = line_4poly, color = "4th Polynomial"), 
+            data = simulated_data_poly, inherit.aes = FALSE) 
+
+zoomed_out
+```
 
