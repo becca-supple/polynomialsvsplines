@@ -1,0 +1,123 @@
+---
+title: "Animated graph splines"
+output: html_document
+date: "2024-02-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mgcv)
+library(tidyverse)
+library(splines)
+library(gganimate)
+library(gifski)
+theme_set(theme_classic())
+```
+
+Generate the relevant data & functions:
+```{r}
+set.seed(53)
+simulated_data <- gamSim(eg = 1, 
+                         n = 200,
+                         dist = "normal",
+                         scale = 0.2)[,c(1,4)]
+
+colnames(simulated_data) <- c("response", "covariate")
+
+simulated_data |> 
+  ggplot(aes(x = covariate, y = response)) +
+  geom_point()
+```
+Degree 0 splines w/ 3 knots
+
+```{r}
+#three knots at 0.25, 0.5, 0.75:
+simulated_data <- simulated_data |> 
+  mutate(
+    segment = ifelse(covariate < 0.25, 0,
+                     ifelse(covariate < 0.5, 1,
+                            ifelse(covariate < 0.75, 2, 3)))
+  ) |> 
+  arrange(covariate)
+
+#D0 splines:
+splines_D0 <- data.frame(
+  step = c(rep(1, 4), rep(2, 4)),
+  y = c(rep(max(simulated_data$response), 4),
+        mean(simulated_data$response[simulated_data$covariate < 0.25]),
+        mean(simulated_data$response[simulated_data$covariate > 0.25 & simulated_data$covariate < 0.5]),
+        mean(simulated_data$response[simulated_data$covariate > 0.5 & simulated_data$covariate < 0.75]),
+        mean(simulated_data$response[simulated_data$covariate > 0.75]))
+)
+
+
+```
+
+```{r}
+b_0s <- ggplot(data = simulated_data, aes(x = covariate, y = response)) +
+  scale_y_continuous(
+    name = "response",
+    sec.axis = sec_axis(~./max(simulated_data$response), name = "spline weight")
+  ) +
+  geom_point() +
+  geom_vline(xintercept = c(0, 0.25, 0.5, 0.75, 1), linetype = "dashed", color = "azure3") +
+  geom_segment(aes(x = 0, y = max(response), 
+                   xend = 0.25, yend = max(response)), color = "#8dd3c7", linewidth = 1.5) +
+  geom_segment(aes(x = 0.25, y = max(response), 
+                   xend = 0.5, yend = max(response)), color = "#fc8d62", linewidth = 1.5) +
+  geom_segment(aes(x = 0.5, y = max(response), 
+                   xend = 0.75, yend = max(response)), color = "#8da0cb", linewidth = 1.5) +
+  geom_segment(aes(x = 0.75, y = max(response), 
+                   xend = 1, yend = max(response)), color = "#e78ac3", linewidth = 1.5) +
+  geom_segment(aes(x = 0, y = 9.130998, 
+                   xend = 0.25, yend = 9.130998), color = "#8dd3c7", linewidth = 1.5) +
+  geom_segment(aes(x = 0.25, y = 9.487714, 
+                   xend = 0.5, yend = 9.487714), color = "#fc8d62", linewidth = 1.5) +
+  geom_segment(aes(x = 0.5, y = 7.521143, 
+                   xend = 0.75, yend = 7.521143), color = "#8da0cb", linewidth = 1.5) +
+  geom_segment(aes(x = 0.75, y = 5.056564, 
+                   xend = 1, yend = 5.056564), color = "#e78ac3", linewidth = 1.5) 
+  
+```
+
+```{r}
+animb0s <- b_0s +
+transition_layers(layer_length = 1, transition_length = 3,
+                  from_blank = FALSE, 
+                  keep_layers = c(Inf, Inf, 3, 3, 3, 3)) 
+  
+
+animate(animb0s,
+        renderer = gifski_renderer())
+```
+
+Degree 1 splines with 3 knots:
+```{r}
+simulated_data <- simulated_data |> 
+  mutate(x_0 = ifelse(segment == 0, covariate, 0),
+         x_1 = ifelse(segment == 1, covariate, 0),
+         x_2 = ifelse(segment == 2, covariate, 0),
+         x_3 = ifelse(segment == 3, covariate, 0)
+         )
+
+b_1s <- ggplot(data = simulated_data, aes(x = covariate, y = response)) +
+  scale_y_continuous(
+    name = "response",
+    sec.axis = sec_axis(~./max(simulated_data$response), name = "spline weight")
+  ) +
+  geom_point() +
+  geom_vline(xintercept = c(0, 0.25, 0.5, 0.75, 1), linetype = "dashed", color = "azure3") +
+  geom_segment(aes(x = 0, y = 9.130998, 
+                   xend = 0.25, yend = 9.130998), color = "#8dd3c7", linewidth = 1.5) +
+  geom_segment(aes(x = 0.25, y = 9.487714, 
+                   xend = 0.5, yend = 9.487714), color = "#fc8d62", linewidth = 1.5) +
+  geom_segment(aes(x = 0.5, y = 7.521143, 
+                   xend = 0.75, yend = 7.521143), color = "#8da0cb", linewidth = 1.5) +
+  geom_segment(aes(x = 0.75, y = 5.056564, 
+                   xend = 1, yend = 5.056564), color = "#e78ac3", linewidth = 1.5) +
+  #b1 splines
+  #geom_smooth didn't work - maybe set up manual ablines
+  
+  
+```
+
