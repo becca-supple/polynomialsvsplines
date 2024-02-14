@@ -11,6 +11,7 @@ library(tidyverse)
 library(splines)
 library(gganimate)
 library(gifski)
+library(transformr)
 theme_set(theme_classic())
 ```
 
@@ -39,17 +40,6 @@ simulated_data <- simulated_data |>
                             ifelse(covariate < 0.75, 2, 3)))
   ) |> 
   arrange(covariate)
-
-#D0 splines:
-splines_D0 <- data.frame(
-  step = c(rep(1, 4), rep(2, 4)),
-  y = c(rep(max(simulated_data$response), 4),
-        mean(simulated_data$response[simulated_data$covariate < 0.25]),
-        mean(simulated_data$response[simulated_data$covariate > 0.25 & simulated_data$covariate < 0.5]),
-        mean(simulated_data$response[simulated_data$covariate > 0.5 & simulated_data$covariate < 0.75]),
-        mean(simulated_data$response[simulated_data$covariate > 0.75]))
-)
-
 
 ```
 
@@ -89,35 +79,77 @@ transition_layers(layer_length = 1, transition_length = 3,
 
 animate(animb0s,
         renderer = gifski_renderer())
+anim_save("D:/Advanced Data Analysis/b0_animation.gif")
 ```
 
 Degree 1 splines with 3 knots:
 ```{r}
 simulated_data <- simulated_data |> 
-  mutate(x_0 = ifelse(segment == 0, covariate, 0),
-         x_1 = ifelse(segment == 1, covariate, 0),
-         x_2 = ifelse(segment == 2, covariate, 0),
-         x_3 = ifelse(segment == 3, covariate, 0)
-         )
+  mutate(
+    b_00 = ifelse(segment == 0, 1, 0),
+    b_10 = ifelse(segment == 1, 1, 0),
+    b_20 = ifelse(segment == 2, 1, 0),
+    b_30 = ifelse(segment == 3, 1, 0),
+    b_neg11 = (0.25 - covariate)/(0.25) * b_00,
+    b_01 = (4 * covariate * b_00) + ((0.5 - covariate) / (0.25)) * b_10,
+    b_11 = (covariate - 0.25)/(0.25) * b_10 + (0.75 - covariate)/(0.25) * b_20,
+    b_21 = (covariate - 0.5)/(0.25) * b_20 + (1 - covariate)/(0.25) * b_30,
+    b_31 = (covariate - 0.75)/(0.25) * b_30,
+    line_1 = b_neg11 * betas_1[1] + b_01 * betas_1[2] + b_11 * betas_1[3] + b_21 * betas_1[4] + b_31 * betas_1[5]
+  )
 
+betas_1 <- glm(response ~ b_neg11 + b_01 + b_11 + b_21 + b_31 -1, data = simulated_data)$coefficients
+```
+
+Plot:
+```{r}
 b_1s <- ggplot(data = simulated_data, aes(x = covariate, y = response)) +
   scale_y_continuous(
     name = "response",
-    sec.axis = sec_axis(~./max(simulated_data$response), name = "spline weight")
+    sec.axis = sec_axis(~./max(simulated_data$response), name = "spline weight"),
+    limits = c(0, max(simulated_data$response))
   ) +
   geom_point() +
   geom_vline(xintercept = c(0, 0.25, 0.5, 0.75, 1), linetype = "dashed", color = "azure3") +
-  geom_segment(aes(x = 0, y = 9.130998, 
-                   xend = 0.25, yend = 9.130998), color = "#8dd3c7", linewidth = 1.5) +
-  geom_segment(aes(x = 0.25, y = 9.487714, 
-                   xend = 0.5, yend = 9.487714), color = "#fc8d62", linewidth = 1.5) +
-  geom_segment(aes(x = 0.5, y = 7.521143, 
-                   xend = 0.75, yend = 7.521143), color = "#8da0cb", linewidth = 1.5) +
-  geom_segment(aes(x = 0.75, y = 5.056564, 
-                   xend = 1, yend = 5.056564), color = "#e78ac3", linewidth = 1.5) +
-  #b1 splines
-  #geom_smooth didn't work - maybe set up manual ablines
   
+  #unweighted b1 splines
+  geom_line(aes(x = covariate, y = b_neg11 * max(response)), color = "#338477", linewidth = 1.5, linetype = "dotted", inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_01 * max(response)), color = "#8dd3c7", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_11 * max(response)), color = "#fc8d62", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_21 * max(response)), color = "#8da0cb", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_31 * max(response)), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE) +
   
+  #weighted b1 splines
+  geom_line(aes(x = covariate, y = b_neg11 * 5.2132), color = "#338477", linewidth = 1.5, linetype = "dotted", inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_01 * 12.6628), color = "#8dd3c7", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_11 * 7.0089), color = "#fc8d62", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_21 * 6.8372), color = "#8da0cb", linewidth = 1.5, inherit.aes = FALSE) +
+  geom_line(aes(x = covariate, y = b_31 * 3.6916), color = "#e78ac3", linewidth = 1.5, inherit.aes = FALSE) +
+
+  #add it all together
+  geom_line(aes(x = covariate, y = line_1, color = as.factor(segment)), linewidth = 1.5, inherit.aes = FALSE) +
+  scale_color_manual(values = c("0" = "#8dd3c7",
+                                "1" = "#fc8d62",
+                                "2" = "#8da0cb",
+                                "3" = "#e78ac3")) +
+  guides(color = "none")
+
+  
+b_1s
 ```
+
+```{r}
+animb1s <- b_1s +
+transition_layers(layer_length = 1, transition_length = 1,
+                  from_blank = FALSE, 
+                  keep_layers = c(Inf, Inf, 4, 4, 4, 4, 4, Inf, 4, 4, 4)) 
+
+animate(animb1s, nframes = 100, fps = 10, end_pause = 20,
+        renderer = gifski_renderer())
+anim_save("D:/Advanced Data Analysis/b1_animation.gif")
+```
+
+
+
+
 
